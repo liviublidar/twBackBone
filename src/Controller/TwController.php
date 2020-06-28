@@ -3,8 +3,10 @@
 namespace App\Controller;
 
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\Config\Definition\Exception\Exception;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\HttpClient\HttpClient;
+use Symfony\Component\HttpFoundation\Request;
 use App\Service\TwitterClient;
 
 class TwController extends AbstractController
@@ -14,34 +16,55 @@ class TwController extends AbstractController
      */
     public function index()
     {
-
         $twitterClient = new TwitterClient();
-
-        die(var_dump($twitterClient->call('oauth', 'oauth/request_token', 'POST')));
-
+        $baseTokens = $twitterClient->call('oauth', 'oauth/request_token', 'POST');
+        parse_str($baseTokens, $decodedTokens);
+        $authToken = $decodedTokens['oauth_token'];
         return $this->json([
-            'message' => 'Woopsie daisy',
-            'key' => $twitterKey,
-            'secret' => $twitterSecret,
-            'random' => $clientParams
+            'data' => $authToken
         ]);
     }
 
     private function generateNonce():string {
         $randBytes = random_bytes(32);
         $b64random = base64_encode($randBytes);
-        $nonce = preg_replace("/[^A-Za-z0-9 ]/", '', $b64random); //strip out non-alphanumeric
-        return $nonce;
+        return preg_replace("/[^A-Za-z0-9 ]/", '', $b64random); //strip out non-alphanumeric
     }
 
     /**
-     * @Route("/tw/show/{id}", methods={"GET","HEAD", "POST"})
+     * @Route("/tw/connect", methods={"GET", "POST"})
      */
-    public function connect(string $id)
+    public function connect(Request $request)
     {
+
+        $body = json_decode($request->getContent(), true);
+        $params = [
+            'oauth_verifier' => $body['pin']
+        ];
+
+        $twitterClient = new TwitterClient($body['mainToken']);
+        $userValues = $twitterClient->call('oauth', 'oauth/access_token', 'POST', $params);
+        parse_str($userValues, $userValues);
         return $this->json([
-            'as' => 'adasdsadsa'
+            'data' => $userValues,
         ]);
+    }
+
+    /**
+     * @Route("/tw/tweets", methods={"GET", "POST"})
+     */
+    public function tweets(Request $request)
+    {
+        $body = json_decode($request->getContent(), true);
+
+        $twitterClient = new TwitterClient($body['oauth_token'], $body['oauth_token_secret']);
+        $feed = $twitterClient->call('oauth', '1.1/statuses/user_timeline.json', 'GET');
+
+        return $this->json([
+            'data' => $body,
+            'feed' => $feed
+        ]);
+
     }
 
 }
