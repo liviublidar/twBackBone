@@ -61,8 +61,7 @@ class TwController extends AbstractController
         $feed = $twitterClient->call('oauth', '1.1/statuses/user_timeline.json', 'GET');
 
         return $this->json([
-            'data' => $body,
-            'feed' => $feed
+            'data' => json_decode($feed, true, 512),
         ]);
 
     }
