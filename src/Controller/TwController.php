@@ -63,7 +63,27 @@ class TwController extends AbstractController
         return $this->json([
             'data' => json_decode($feed, true, 512),
         ]);
+    }
 
+
+    /**
+     * @Route("/tw/like", methods={"GET", "POST"})
+     */
+    public function like(Request $request)
+    {
+        $body = json_decode($request->getContent(), true);
+
+        $userData = $body['userValues'];
+        $twitterClient = new TwitterClient($userData['oauth_token'], $userData['oauth_token_secret']);
+        $params = [
+            'id' => (string)$body['tweetId']
+        ];
+
+        $like = $twitterClient->call('oauth', '1.1/favorites/create.json', 'POST', $params);
+
+        return $this->json([
+            'data' => $like,
+        ]);
     }
 
 }
